@@ -896,6 +896,14 @@
             else if (value === 13) rankName = 'KING';
             return `images/${suit}-${rankName}.svg`;
         }
+        // Mappatura esatta richiesta per i nomi file: images/HEART-1.svg ... images/HEART-10.svg, images/HEART-11-JACK.svg, images/HEART-12-QUEEN.svg, images/HEART-13-KING.svg
+        function getCardFileName(suit, value) {
+            let rankName = String(value);
+            if (value === 11) rankName = '11-JACK';
+            else if (value === 12) rankName = '12-QUEEN';
+            else if (value === 13) rankName = '13-KING';
+            return `images/${suit}-${rankName}.svg`;
+        }
 
         function getRankDisplay(value) {
             if (value === 1) return 'A';
@@ -1249,8 +1257,7 @@
             img.draggable = false;
 
             if (card.faceUp) {
-                const fileName = getCardFileName(card.suit, card.value);
-                img.src = fileName;
+                img.src = getCardFileName(card.suit, card.value);
                 img.onerror = function () {
                     this.onerror = null;
                     this.src = getFallbackCardFaceSVG(card.suit, card.value);
