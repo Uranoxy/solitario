@@ -11,13 +11,9 @@
             --card-width: 96px;
             --card-height: 136px;
             --card-radius: 7px;
-            --card-border: #8c969e;
-            --slot-border: rgba(255, 255, 255, 0.28);
+            --toolbar-height: 54px;
+            --slot-border: rgba(255, 255, 255, 0.25);
             --slot-bg: rgba(0, 0, 0, 0.14);
-            --toolbar-height: 56px;
-            --tableau-offset-down: 18px;
-            --tableau-offset-up: 28px;
-            --waste-fan-offset: 24px;
         }
 
         * {
@@ -892,13 +888,13 @@
             SPADE:   { symbol: '♠', color: 'black', foundationIndex: 3 }
         };
 
-        // Mappatura esatta richiesta per i nomi file: HEART-1 ... HEART-10, HEART-JACK, HEART-QUEEN, HEART-KING
+        // Mappatura esatta richiesta per i nomi file: images/HEART-1.svg ... images/HEART-10.svg, images/HEART-JACK.svg, images/HEART-QUEEN.svg, images/HEART-KING.svg
         function getCardFileName(suit, value) {
             let rankName = String(value);
             if (value === 11) rankName = 'JACK';
             else if (value === 12) rankName = 'QUEEN';
             else if (value === 13) rankName = 'KING';
-            return `${suit}-${rankName}.svg`;
+            return `images/${suit}-${rankName}.svg`;
         }
 
         function getRankDisplay(value) {
@@ -962,8 +958,8 @@
         // ==========================================
         const DEFAULT_SETTINGS = {
             bgColor: '#1b6e32',
-            drawCount: 1,       // 1 o 3
-            maxRedeals: -1      // -1 = Illimitati, 0 = Nessuno, 1, 2, 3
+            drawCount: 3,       // Default: Gira 3 carte
+            maxRedeals: 3       // Default: Ripescaggi 3 volte
         };
 
         let settings = loadSettings();
@@ -1016,8 +1012,8 @@
                     const parsed = JSON.parse(raw);
                     return {
                         bgColor: parsed.bgColor || DEFAULT_SETTINGS.bgColor,
-                        drawCount: [1, 3].includes(Number(parsed.drawCount)) ? Number(parsed.drawCount) : 1,
-                        maxRedeals: [-1, 0, 1, 2, 3].includes(Number(parsed.maxRedeals)) ? Number(parsed.maxRedeals) : -1
+                        drawCount: [1, 3].includes(Number(parsed.drawCount)) ? Number(parsed.drawCount) : DEFAULT_SETTINGS.drawCount,
+                        maxRedeals: [-1, 0, 1, 2, 3].includes(Number(parsed.maxRedeals)) ? Number(parsed.maxRedeals) : DEFAULT_SETTINGS.maxRedeals
                     };
                 }
             } catch (e) {
