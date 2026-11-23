@@ -1,0 +1,1997 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Solitario Classico Windows</title>
+    <style>
+        :root {
+            --table-bg: #1b6e32;
+            --table-bg-dark: #114b21;
+            --card-width: 96px;
+            --card-height: 136px;
+            --card-radius: 7px;
+            --card-border: #8c969e;
+            --slot-border: rgba(255, 255, 255, 0.28);
+            --slot-bg: rgba(0, 0, 0, 0.14);
+            --toolbar-height: 56px;
+            --tableau-offset-down: 18px;
+            --tableau-offset-up: 28px;
+            --waste-fan-offset: 24px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--table-bg);
+            color: #ffffff;
+            touch-action: none;
+        }
+
+        /* Sfondo tavolo con gradiente radiale elegante stile Win 7 */
+        body {
+            background: radial-gradient(circle at 50% 35%, var(--table-bg) 0%, var(--table-bg-dark) 100%);
+            display: flex;
+            flex-direction: column;
+            transition: background 0.35s ease;
+        }
+
+        /* Barra superiore stile Windows */
+        header.toolbar {
+            height: var(--toolbar-height);
+            background: linear-gradient(180deg, rgba(255,255,255,0.16) 0%, rgba(0,0,0,0.25) 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.18);
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 14px;
+            z-index: 100;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .game-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+
+        .game-title svg {
+            width: 22px;
+            height: 22px;
+            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.4));
+        }
+
+        /* Pulsanti touch-friendly */
+        .btn {
+            background: linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.08) 100%);
+            border: 1px solid rgba(255,255,255,0.32);
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 0.92rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 40px;
+            transition: all 0.15s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+        }
+
+        .btn:hover:not(:disabled) {
+            background: linear-gradient(180deg, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0.14) 100%);
+            border-color: rgba(255,255,255,0.55);
+            transform: translateY(-1px);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: translateY(1px);
+            background: rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.42;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: linear-gradient(180deg, #2b88d8 0%, #106ebe 100%);
+            border-color: #4ba0e8;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: linear-gradient(180deg, #3a96e5 0%, #167ad1 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(180deg, #2da44e 0%, #1f7a38 100%);
+            border-color: #4ac26b;
+        }
+
+        /* Pannello Statistiche */
+        .stats-bar {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: rgba(0, 0, 0, 0.24);
+            padding: 5px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.14);
+            font-size: 0.9rem;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+        }
+
+        .stat-label {
+            color: rgba(255,255,255,0.75);
+            font-size: 0.82rem;
+        }
+
+        .stat-value {
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: #fff;
+        }
+
+        /* Area di gioco principale */
+        main#game-board {
+            flex: 1;
+            width: 100%;
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            position: relative;
+        }
+
+        /* Riga superiore: Mazzo, Scarti e 4 Case */
+        .top-row {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 12px;
+            align-items: start;
+            justify-items: center;
+            height: var(--card-height);
+        }
+
+        /* Riga inferiore: 7 Colonne del Tableau */
+        .tableau-row {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 12px;
+            align-items: start;
+            justify-items: center;
+            position: relative;
+        }
+
+        /* Segnaposto base (Slot) */
+        .pile-slot {
+            width: var(--card-width);
+            height: var(--card-height);
+            border-radius: var(--card-radius);
+            border: 2px solid var(--slot-border);
+            background-color: var(--slot-bg);
+            position: relative;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.22);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .pile-slot.highlight-target {
+            border-color: #ffd700;
+            box-shadow: 0 0 14px rgba(255, 215, 0, 0.7), inset 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        /* Contenitore Scarti (occupa visivamente colonne 2 e 3) */
+        .waste-container {
+            grid-column: 2 / span 2;
+            width: 100%;
+            height: var(--card-height);
+            position: relative;
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .waste-slot {
+            width: var(--card-width);
+            height: var(--card-height);
+            position: relative;
+        }
+
+        /* Stile Mazzo (Stock) */
+        #stock-pile {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #stock-pile:active {
+            transform: scale(0.97);
+        }
+
+        .stock-indicator {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        .stock-recycle {
+            border: 4px solid rgba(110, 235, 131, 0.75);
+            color: rgba(110, 235, 131, 0.9);
+            box-shadow: 0 0 10px rgba(0,0,0,0.25);
+        }
+
+        .stock-empty-x {
+            color: rgba(235, 87, 87, 0.85);
+            font-size: 36px;
+            font-weight: 800;
+        }
+
+        .stock-badge {
+            position: absolute;
+            bottom: 5px;
+            right: 6px;
+            background: rgba(0,0,0,0.65);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 1px 6px;
+            border-radius: 10px;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Simboli delle 4 Case (Fondazioni) */
+        .foundation-slot {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .foundation-watermark {
+            font-size: calc(var(--card-width) * 0.42);
+            color: rgba(255, 255, 255, 0.2);
+            pointer-events: none;
+            line-height: 1;
+        }
+
+        /* Colonne Tableau */
+        .tableau-col {
+            width: var(--card-width);
+            min-height: var(--card-height);
+            height: 100%;
+            position: relative;
+        }
+
+        .tableau-base-outline {
+            width: var(--card-width);
+            height: var(--card-height);
+            border-radius: var(--card-radius);
+            border: 2px dashed rgba(255, 255, 255, 0.18);
+            background: rgba(0, 0, 0, 0.08);
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .tableau-col.highlight-target .tableau-base-outline {
+            border: 2px solid #ffd700;
+            box-shadow: 0 0 14px rgba(255, 215, 0, 0.7);
+        }
+
+        /* =========================================================
+           STILE CARTE E GENERAZIONE BORDO PER IMMAGINI SENZA BORDO
+           ========================================================= */
+        .card {
+            width: var(--card-width);
+            height: var(--card-height);
+            position: absolute;
+            top: 0;
+            left: 0;
+            border-radius: var(--card-radius);
+            background-color: #ffffff;
+            /* Bordo esterno nitido richiesto poiché i file immagine non hanno bordo */
+            border: 1.5px solid #8a949e;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.32), inset 0 0 0 1px rgba(255,255,255,0.9);
+            overflow: hidden;
+            cursor: grab;
+            transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), top 0.2s ease, left 0.2s ease, box-shadow 0.18s ease;
+            will-change: transform, top, left;
+            touch-action: none;
+        }
+
+        .card.face-down {
+            cursor: default;
+            background-color: #16498c;
+            border: 1.5px solid #d0d7de;
+        }
+
+        /* Contenitore interno immagine con leggero padding/margine di sicurezza per il bordo */
+        .card-inner {
+            width: 100%;
+            height: 100%;
+            padding: 2px;
+            background: #ffffff;
+            border-radius: calc(var(--card-radius) - 1.5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .card.face-down .card-inner {
+            padding: 3px;
+            background: #ffffff; /* Cornice bianca classica attorno al retro blu */
+        }
+
+        .card img.card-graphic {
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
+            display: block;
+            border-radius: calc(var(--card-radius) - 3px);
+            pointer-events: none;
+        }
+
+        /* Effetto Hover/Selezione sobrio */
+        .card.face-up:hover {
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.42);
+        }
+
+        .card.selected-hint {
+            box-shadow: 0 0 0 2.5px #ffd700, 0 6px 14px rgba(0,0,0,0.45);
+        }
+
+        /* Animazione Flip quando si scopre una carta */
+        @keyframes cardFlipReveal {
+            0% {
+                transform: perspective(600px) rotateY(90deg) scale(1.03);
+            }
+            100% {
+                transform: perspective(600px) rotateY(0deg) scale(1);
+            }
+        }
+
+        .card.flip-anim {
+            animation: cardFlipReveal 0.24s ease-out forwards;
+        }
+
+        /* Layer di trascinamento fluido */
+        #drag-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .drag-stack {
+            position: absolute;
+            pointer-events: none;
+            filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.45));
+            transform: scale(1.03);
+        }
+
+        .drag-stack .card {
+            transition: none !important;
+        }
+
+        /* Canvas per animazione vittoria stile Windows (carte che rimbalzano) */
+        #victory-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 800;
+            display: none;
+        }
+
+        /* Modale / Finestra Impostazioni e Vittoria */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.62);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1200;
+            padding: 16px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-backdrop.open {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-dialog {
+            background: #f5f7fa;
+            color: #1f2937;
+            width: 100%;
+            max-width: 480px;
+            border-radius: 12px;
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            transform: translateY(10px);
+            transition: transform 0.22s ease;
+        }
+
+        .modal-backdrop.open .modal-dialog {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            background: linear-gradient(180deg, #2b88d8 0%, #106ebe 100%);
+            color: #ffffff;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .modal-close {
+            background: rgba(255,255,255,0.18);
+            border: none;
+            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .modal-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            max-height: 75vh;
+            overflow-y: auto;
+        }
+
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .setting-label {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #111827;
+        }
+
+        .setting-desc {
+            font-size: 0.82rem;
+            color: #4b5563;
+            margin-top: -4px;
+        }
+
+        /* Opzioni radio stile pillole touch */
+        .option-pills {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .option-pills.cols-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .pill-btn {
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 2px solid #d1d5db;
+            background: #ffffff;
+            color: #374151;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s ease;
+        }
+
+        .pill-btn:hover {
+            border-color: #93c5fd;
+            background: #f0f7ff;
+        }
+
+        .pill-btn.active {
+            border-color: #106ebe;
+            background: #e1effe;
+            color: #0c5494;
+            box-shadow: 0 1px 4px rgba(16, 110, 190, 0.2);
+        }
+
+        /* Selettore colori tavolo */
+        .color-swatches {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .swatch-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 3px solid #ffffff;
+            box-shadow: 0 0 0 1.5px #9ca3af, 0 2px 5px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        .swatch-btn:hover {
+            transform: scale(1.08);
+        }
+
+        .swatch-btn.active {
+            box-shadow: 0 0 0 3px #106ebe, 0 3px 8px rgba(0,0,0,0.3);
+            transform: scale(1.1);
+        }
+
+        .custom-color-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        input[type="color"] {
+            width: 38px;
+            height: 38px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: none;
+        }
+
+        .modal-footer {
+            padding: 14px 20px;
+            background: #e5e7eb;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .btn-modal-secondary {
+            background: #ffffff;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            text-shadow: none;
+        }
+
+        .btn-modal-secondary:hover {
+            background: #f3f4f6;
+        }
+
+        /* Toast notifiche non invasive */
+        #toast-msg {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(17, 24, 39, 0.9);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 24px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s ease;
+            z-index: 1500;
+        }
+
+        #toast-msg.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Adattamento responsivo per Tablet Verticale e Schermi Piccoli */
+        @media (max-width: 768px) {
+            .game-title span {
+                display: none;
+            }
+            .stats-bar {
+                gap: 10px;
+                padding: 4px 10px;
+                font-size: 0.82rem;
+            }
+            .btn {
+                padding: 7px 10px;
+                font-size: 0.85rem;
+            }
+            main#game-board {
+                padding: 10px 8px;
+                gap: 12px;
+            }
+            .top-row, .tableau-row {
+                gap: 6px;
+            }
+        }
+
+        @media (max-width: 520px) {
+            .stat-label {
+                display: none;
+            }
+            .btn-text-hide-xs {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Barra superiore -->
+    <header class="toolbar">
+        <div class="toolbar-group">
+            <div class="game-title" title="Solitario Classico Windows">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <rect x="2" y="3" width="14" height="18" rx="2" fill="#fff" stroke="#ccc"/>
+                    <path d="M9 8.5C9 7.4 8.1 6.5 7 6.5C6.2 6.5 5.5 7 5.2 7.6C4.9 7 4.2 6.5 3.4 6.5C2.3 6.5 1.4 7.4 1.4 8.5C1.4 10.6 5.2 13 5.2 13C5.2 13 9 10.6 9 8.5Z" transform="translate(3.8, 2)" fill="#e11d48"/>
+                    <rect x="8" y="5" width="14" height="18" rx="2" fill="#2563eb" stroke="#fff" stroke-width="1.2"/>
+                </svg>
+                <span>Solitario</span>
+            </div>
+            <button id="btn-new-game" class="btn btn-primary" title="Inizia una nuova partita">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                    <path d="M3 3v5h5"/>
+                </svg>
+                <span>Nuova</span>
+            </button>
+            <button id="btn-undo" class="btn" disabled title="Annulla ultima mossa">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <path d="M9 14 4 9l5-5"/>
+                    <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/>
+                </svg>
+                <span class="btn-text-hide-xs">Annulla</span>
+            </button>
+            <button id="btn-autocomplete" class="btn btn-success" style="display: none;" title="Completa automaticamente la partita">
+                <span>✨ Completa</span>
+            </button>
+        </div>
+
+        <!-- Punteggio, Mosse, Tempo -->
+        <div class="stats-bar">
+            <div class="stat-item" title="Punteggio Windows">
+                <span class="stat-label">Punti:</span>
+                <span id="stat-score" class="stat-value">0</span>
+            </div>
+            <div class="stat-item" title="Numero di mosse">
+                <span class="stat-label">Mosse:</span>
+                <span id="stat-moves" class="stat-value">0</span>
+            </div>
+            <div class="stat-item" title="Tempo trascorso">
+                <span class="stat-label">Tempo:</span>
+                <span id="stat-time" class="stat-value">00:00</span>
+            </div>
+        </div>
+
+        <div class="toolbar-group">
+            <button id="btn-settings" class="btn" title="Impostazioni di gioco">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                <span class="btn-text-hide-xs">Impostazioni</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Tavolo da gioco -->
+    <main id="game-board">
+        <!-- Fila superiore: Mazzo, Scarti (2 colonne) e 4 Case -->
+        <section class="top-row">
+            <!-- Mazzo (Stock) -->
+            <div id="stock-pile" class="pile-slot" title="Clicca per pescare"></div>
+
+            <!-- Scarti (Waste) -->
+            <div class="waste-container">
+                <div id="waste-pile" class="waste-slot"></div>
+            </div>
+
+            <!-- 4 Case / Fondazioni -->
+            <div id="foundation-0" class="pile-slot foundation-slot" data-suit="HEART">
+                <span class="foundation-watermark">♥</span>
+            </div>
+            <div id="foundation-1" class="pile-slot foundation-slot" data-suit="DIAMOND">
+                <span class="foundation-watermark">♦</span>
+            </div>
+            <div id="foundation-2" class="pile-slot foundation-slot" data-suit="CLUB">
+                <span class="foundation-watermark">♣</span>
+            </div>
+            <div id="foundation-3" class="pile-slot foundation-slot" data-suit="SPADE">
+                <span class="foundation-watermark">♠</span>
+            </div>
+        </section>
+
+        <!-- Fila inferiore: 7 Colonne del Tableau -->
+        <section class="tableau-row" id="tableau-row">
+            <div class="tableau-col" data-col="0"><div class="tableau-base-outline"></div></div>
+            <div class="tableau-col" data-col="1"><div class="tableau-base-outline"></div></div>
+            <div class="tableau-col" data-col="2"><div class="tableau-base-outline"></div></div>
+            <div class="tableau-col" data-col="3"><div class="tableau-base-outline"></div></div>
+            <div class="tableau-col" data-col="4"><div class="tableau-base-outline"></div></div>
+            <div class="tableau-col" data-col="5"><div class="tableau-base-outline"></div></div>
+            <div class="tableau-col" data-col="6"><div class="tableau-base-outline"></div></div>
+        </section>
+    </main>
+
+    <!-- Layer per carte trascinate -->
+    <div id="drag-layer"></div>
+
+    <!-- Canvas per l'animazione finale stile Windows -->
+    <canvas id="victory-canvas"></canvas>
+
+    <!-- Messaggio Toast -->
+    <div id="toast-msg"></div>
+
+    <!-- Modale Impostazioni -->
+    <div id="settings-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <span id="settings-title">Impostazioni Solitario</span>
+                <button id="btn-close-settings" class="modal-close" aria-label="Chiudi">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- 1. Colore di sfondo -->
+                <div class="setting-group">
+                    <div class="setting-label">Colore del tavolo</div>
+                    <div class="setting-desc">Scegli lo sfondo classico verde Windows o una tonalità personalizzata.</div>
+                    <div class="color-swatches" id="color-swatches">
+                        <button type="button" class="swatch-btn" data-color="#1b6e32" style="background: #1b6e32;" title="Verde Classico Windows"></button>
+                        <button type="button" class="swatch-btn" data-color="#0f5132" style="background: #0f5132;" title="Verde Smeraldo Scuro"></button>
+                        <button type="button" class="swatch-btn" data-color="#1d4ed8" style="background: #1d4ed8;" title="Blu Reale Windows"></button>
+                        <button type="button" class="swatch-btn" data-color="#881337" style="background: #881337;" title="Rosso Velluto"></button>
+                        <button type="button" class="swatch-btn" data-color="#334155" style="background: #334155;" title="Grigio Ardesia"></button>
+                        <div class="custom-color-wrapper">
+                            <label for="custom-bg-color">Altro:</label>
+                            <input type="color" id="custom-bg-color" value="#1b6e32">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Carte scoperte dal mazzo -->
+                <div class="setting-group">
+                    <div class="setting-label">Carte scoperte ad ogni click sul mazzo</div>
+                    <div class="setting-desc">Modificando questa regola verrà avviata una nuova partita.</div>
+                    <div class="option-pills" id="draw-count-options">
+                        <button type="button" class="pill-btn" data-draw="1">Gira 1 carta</button>
+                        <button type="button" class="pill-btn" data-draw="3">Gira 3 carte</button>
+                    </div>
+                </div>
+
+                <!-- 3. Ricomposizione del mazzo -->
+                <div class="setting-group">
+                    <div class="setting-label">Ricomposizione del mazzo (Ripescaggi)</div>
+                    <div class="setting-desc">Quante volte è possibile ricomporre il mazzo dopo aver scoperto tutte le carte.</div>
+                    <div class="option-pills cols-3" id="redeals-options">
+                        <button type="button" class="pill-btn" data-redeals="-1">Illimitati</button>
+                        <button type="button" class="pill-btn" data-redeals="0">Nessuno (0)</button>
+                        <button type="button" class="pill-btn" data-redeals="1">1 volta</button>
+                        <button type="button" class="pill-btn" data-redeals="2">2 volte</button>
+                        <button type="button" class="pill-btn" data-redeals="3">3 volte</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btn-cancel-settings" class="btn btn-modal-secondary">Annulla</button>
+                <button type="button" id="btn-save-settings" class="btn btn-primary">Applica e Salva</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale Vittoria -->
+    <div id="victory-modal" class="modal-backdrop" role="dialog" aria-modal="true">
+        <div class="modal-dialog" style="max-width: 400px; text-align: center;">
+            <div class="modal-header" style="justify-content: center; background: linear-gradient(180deg, #2da44e 0%, #1f7a38 100%);">
+                <span>🎉 Hai Vinto!</span>
+            </div>
+            <div class="modal-body" style="align-items: center;">
+                <p style="font-size: 1rem; color: #374151;">Complimenti! Hai completato il Solitario.</p>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; background: #e5e7eb; padding: 12px; border-radius: 8px;">
+                    <div>
+                        <div style="font-size: 0.75rem; color: #6b7280;">PUNTEGGIO</div>
+                        <div id="win-score" style="font-size: 1.2rem; font-weight: 800; color: #111827;">0</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: #6b7280;">MOSSE</div>
+                        <div id="win-moves" style="font-size: 1.2rem; font-weight: 800; color: #111827;">0</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.75rem; color: #6b7280;">TEMPO</div>
+                        <div id="win-time" style="font-size: 1.2rem; font-weight: 800; color: #111827;">00:00</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button type="button" id="btn-win-new-game" class="btn btn-primary" style="width: 100%;">Gioca Ancora</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    /**
+     * SOLITARIO KLONDIKE CLASSICO (STILE WINDOWS XP / WIN 7)
+     * Ottimizzato per Tablet (Touch & Mouse) con gestione immagini SVG/PNG locali
+     * e generazione automatica del bordo esterno.
+     */
+    (function () {
+        'use strict';
+
+        // ==========================================
+        // 1. COSTANTI E CONFIGURAZIONE CARTE
+        // ==========================================
+        const SUITS = ['HEART', 'DIAMOND', 'CLUB', 'SPADE'];
+        const SUIT_META = {
+            HEART:   { symbol: '♥', color: 'red',   foundationIndex: 0 },
+            DIAMOND: { symbol: '♦', color: 'red',   foundationIndex: 1 },
+            CLUB:    { symbol: '♣', color: 'black', foundationIndex: 2 },
+            SPADE:   { symbol: '♠', color: 'black', foundationIndex: 3 }
+        };
+
+        // Mappatura esatta richiesta per i nomi file: HEART-1 ... HEART-10, HEART-JACK, HEART-QUEEN, HEART-KING
+        function getCardFileName(suit, value) {
+            let rankName = String(value);
+            if (value === 11) rankName = 'JACK';
+            else if (value === 12) rankName = 'QUEEN';
+            else if (value === 13) rankName = 'KING';
+            return `${suit}-${rankName}.svg`;
+        }
+
+        function getRankDisplay(value) {
+            if (value === 1) return 'A';
+            if (value === 11) return 'J';
+            if (value === 12) return 'Q';
+            if (value === 13) return 'K';
+            return String(value);
+        }
+
+        // ==========================================
+        // 2. GENERATORI FALLBACK GRAFICI (SE FILE LOCALI ASSENTI)
+        // ==========================================
+        // Crea un data-URI SVG nitido se il file locale non viene trovato nell'anteprima
+        const fallbackCache = new Map();
+
+        function getFallbackCardFaceSVG(suit, value) {
+            const key = `${suit}-${value}`;
+            if (fallbackCache.has(key)) return fallbackCache.get(key);
+
+            const meta = SUIT_META[suit];
+            const fill = meta.color === 'red' ? '#d91e2a' : '#1b1f24';
+            const rankStr = getRankDisplay(value);
+            const sym = meta.symbol;
+
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 200">
+                <rect width="140" height="200" fill="#ffffff"/>
+                <text x="12" y="30" font-family="Arial, sans-serif" font-weight="bold" font-size="24" fill="${fill}">${rankStr}</text>
+                <text x="13" y="54" font-family="Arial, sans-serif" font-size="24" fill="${fill}">${sym}</text>
+                <text x="70" y="116" text-anchor="middle" font-family="Arial, sans-serif" font-size="68" fill="${fill}">${sym}</text>
+                <g transform="translate(140,200) rotate(180)">
+                    <text x="12" y="30" font-family="Arial, sans-serif" font-weight="bold" font-size="24" fill="${fill}">${rankStr}</text>
+                    <text x="13" y="54" font-family="Arial, sans-serif" font-size="24" fill="${fill}">${sym}</text>
+                </g>
+            </svg>`;
+
+            const uri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+            fallbackCache.set(key, uri);
+            return uri;
+        }
+
+        let fallbackBackURI = null;
+        function getFallbackCardBackSVG() {
+            if (fallbackBackURI) return fallbackBackURI;
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 200">
+                <defs>
+                    <pattern id="grid" width="12" height="12" patternUnits="userSpaceOnUse">
+                        <path d="M 12 0 L 0 12 M 0 0 L 12 12" stroke="#3b82f6" stroke-width="1.2" opacity="0.55"/>
+                    </pattern>
+                </defs>
+                <rect width="140" height="200" rx="6" fill="#1e40af"/>
+                <rect x="6" y="6" width="128" height="188" rx="4" fill="url(#grid)" stroke="#93c5fd" stroke-width="2"/>
+                <circle cx="70" cy="100" r="24" fill="#1d4ed8" stroke="#bfdbfe" stroke-width="2"/>
+            </svg>`;
+            fallbackBackURI = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+            return fallbackBackURI;
+        }
+
+        // ==========================================
+        // 3. STATO DEL GIOCO E IMPOSTAZIONI
+        // ==========================================
+        const DEFAULT_SETTINGS = {
+            bgColor: '#1b6e32',
+            drawCount: 1,       // 1 o 3
+            maxRedeals: -1      // -1 = Illimitati, 0 = Nessuno, 1, 2, 3
+        };
+
+        let settings = loadSettings();
+
+        let gameState = {
+            stock: [],                  // Carte coperte nel mazzo
+            waste: [],                  // Carte scoperte negli scarti
+            foundations: [[], [], [], []], // 4 case (HEART, DIAMOND, CLUB, SPADE)
+            tableau: [[], [], [], [], [], [], []], // 7 colonne
+            redealsUsed: 0,
+            score: 0,
+            moves: 0,
+            seconds: 0,
+            timerStarted: false,
+            isWon: false,
+            lastFlippedCardId: null
+        };
+
+        let historyStack = [];
+        let timerInterval = null;
+        let victoryAnimId = null;
+
+        // ==========================================
+        // 4. RIFERIMENTI DOM
+        // ==========================================
+        const elStock = document.getElementById('stock-pile');
+        const elWaste = document.getElementById('waste-pile');
+        const elFoundations = [
+            document.getElementById('foundation-0'),
+            document.getElementById('foundation-1'),
+            document.getElementById('foundation-2'),
+            document.getElementById('foundation-3')
+        ];
+        const elTableauCols = Array.from(document.querySelectorAll('.tableau-col'));
+        const elDragLayer = document.getElementById('drag-layer');
+        const elScore = document.getElementById('stat-score');
+        const elMoves = document.getElementById('stat-moves');
+        const elTime = document.getElementById('stat-time');
+        const btnUndo = document.getElementById('btn-undo');
+        const btnAutoComplete = document.getElementById('btn-autocomplete');
+        const elVictoryCanvas = document.getElementById('victory-canvas');
+
+        // ==========================================
+        // 5. PERSISTENZA IMPOSTAZIONI E TEMA
+        // ==========================================
+        function loadSettings() {
+            try {
+                const raw = localStorage.getItem('win_solitaire_settings_v1');
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    return {
+                        bgColor: parsed.bgColor || DEFAULT_SETTINGS.bgColor,
+                        drawCount: [1, 3].includes(Number(parsed.drawCount)) ? Number(parsed.drawCount) : 1,
+                        maxRedeals: [-1, 0, 1, 2, 3].includes(Number(parsed.maxRedeals)) ? Number(parsed.maxRedeals) : -1
+                    };
+                }
+            } catch (e) {
+                console.warn('Impossibile leggere localStorage:', e);
+            }
+            return { ...DEFAULT_SETTINGS };
+        }
+
+        function saveSettingsToStorage() {
+            try {
+                localStorage.setItem('win_solitaire_settings_v1', JSON.stringify(settings));
+            } catch (e) {
+                console.warn('Impossibile salvare in localStorage:', e);
+            }
+        }
+
+        function darkenHexColor(hex, percent) {
+            const num = parseInt(hex.replace('#', ''), 16);
+            const amt = Math.round(2.55 * percent);
+            const R = Math.max(0, (num >> 16) - amt);
+            const G = Math.max(0, ((num >> 8) & 0x00FF) - amt);
+            const B = Math.max(0, (num & 0x0000FF) - amt);
+            return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
+        }
+
+        function applyBackgroundTheme(colorHex) {
+            document.documentElement.style.setProperty('--table-bg', colorHex);
+            document.documentElement.style.setProperty('--table-bg-dark', darkenHexColor(colorHex, 16));
+        }
+
+        // ==========================================
+        // 6. DIMENSIONAMENTO RESPONSIVO PER TABLET
+        // ==========================================
+        function updateResponsiveMetrics() {
+            const board = document.getElementById('game-board');
+            if (!board) return;
+
+            const availW = board.clientWidth - 20;
+            const availH = board.clientHeight - 24;
+            const gap = window.innerWidth <= 768 ? 6 : 12;
+
+            // 7 colonne + 6 spazi
+            let cardW = Math.floor((availW - gap * 6) / 7);
+            cardW = Math.max(44, Math.min(cardW, 118));
+
+            // Rapporto proporzioni classico carta (1 : 1.41)
+            let cardH = Math.round(cardW * 1.41);
+
+            // Verifica che in verticale (es. tablet portrait) ci sia spazio sufficiente per il tableau
+            const maxCardHForVertical = Math.floor(availH * 0.23);
+            if (cardH > maxCardHForVertical && maxCardHForVertical > 62) {
+                cardH = maxCardHForVertical;
+                cardW = Math.round(cardH / 1.41);
+            }
+
+            const root = document.documentElement.style;
+            root.setProperty('--card-width', `${cardW}px`);
+            root.setProperty('--card-height', `${cardH}px`);
+            root.setProperty('--card-radius', `${Math.max(4, Math.round(cardW * 0.075))}px`);
+            root.setProperty('--tableau-offset-down', `${Math.max(10, Math.round(cardH * 0.13))}px`);
+            root.setProperty('--tableau-offset-up', `${Math.max(18, Math.round(cardH * 0.22))}px`);
+            root.setProperty('--waste-fan-offset', `${Math.max(14, Math.round(cardW * 0.26))}px`);
+
+            renderBoard();
+        }
+
+        window.addEventListener('resize', () => {
+            updateResponsiveMetrics();
+            if (elVictoryCanvas.style.display === 'block') {
+                elVictoryCanvas.width = window.innerWidth;
+                elVictoryCanvas.height = window.innerHeight;
+            }
+        });
+
+        // ==========================================
+        // 7. INIZIALIZZAZIONE PARTITA E MAZZO
+        // ==========================================
+        function createDeck() {
+            const deck = [];
+            let idCounter = 1;
+            for (const suit of SUITS) {
+                for (let value = 1; value <= 13; value++) {
+                    deck.push({
+                        id: `card-${idCounter++}`,
+                        suit,
+                        value,
+                        color: SUIT_META[suit].color,
+                        faceUp: false
+                    });
+                }
+            }
+            return deck;
+        }
+
+        function shuffleDeck(deck) {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+            return deck;
+        }
+
+        function startNewGame() {
+            stopVictoryAnimation();
+            stopTimer();
+
+            const deck = shuffleDeck(createDeck());
+            const tableau = [[], [], [], [], [], [], []];
+
+            // Distribuzione classica Klondike: colonna i riceve i+1 carte, l'ultima scoperta
+            for (let col = 0; col < 7; col++) {
+                for (let row = 0; row <= col; row++) {
+                    const card = deck.pop();
+                    card.faceUp = (row === col);
+                    tableau[col].push(card);
+                }
+            }
+
+            gameState = {
+                stock: deck,
+                waste: [],
+                foundations: [[], [], [], []],
+                tableau,
+                redealsUsed: 0,
+                score: 0,
+                moves: 0,
+                seconds: 0,
+                timerStarted: false,
+                isWon: false,
+                lastFlippedCardId: null
+            };
+
+            historyStack = [];
+            btnAutoComplete.style.display = 'none';
+            updateStatsUI();
+            renderBoard();
+        }
+
+        // ==========================================
+        // 8. TIMER E PUNTEGGIO WINDOWS
+        // ==========================================
+        function ensureTimerStarted() {
+            if (gameState.timerStarted || gameState.isWon) return;
+            gameState.timerStarted = true;
+            timerInterval = setInterval(() => {
+                gameState.seconds++;
+                // Nel solitario Windows standard ogni 10 secondi si perdono 2 punti
+                if (gameState.seconds % 10 === 0 && gameState.score > 0) {
+                    addScore(-2);
+                }
+                elTime.textContent = formatTime(gameState.seconds);
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function formatTime(totalSec) {
+            const mins = Math.floor(totalSec / 60);
+            const secs = totalSec % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function addScore(delta) {
+            gameState.score = Math.max(0, gameState.score + delta);
+            elScore.textContent = gameState.score;
+        }
+
+        function updateStatsUI() {
+            elScore.textContent = gameState.score;
+            elMoves.textContent = gameState.moves;
+            elTime.textContent = formatTime(gameState.seconds);
+            btnUndo.disabled = historyStack.length === 0 || gameState.isWon;
+        }
+
+        // ==========================================
+        // 9. CRONOLOGIA MOSSE (UNDO)
+        // ==========================================
+        function pushHistorySnapshot() {
+            const snapshot = {
+                stock: gameState.stock.map(c => ({ ...c })),
+                waste: gameState.waste.map(c => ({ ...c })),
+                foundations: gameState.foundations.map(f => f.map(c => ({ ...c }))),
+                tableau: gameState.tableau.map(col => col.map(c => ({ ...c }))),
+                redealsUsed: gameState.redealsUsed,
+                score: gameState.score,
+                moves: gameState.moves
+            };
+            historyStack.push(snapshot);
+            if (historyStack.length > 50) historyStack.shift();
+            btnUndo.disabled = false;
+        }
+
+        function undoLastMove() {
+            if (historyStack.length === 0 || gameState.isWon) return;
+            const prev = historyStack.pop();
+            gameState.stock = prev.stock;
+            gameState.waste = prev.waste;
+            gameState.foundations = prev.foundations;
+            gameState.tableau = prev.tableau;
+            gameState.redealsUsed = prev.redealsUsed;
+            gameState.score = Math.max(0, prev.score - 2); // Piccola penalità undo opzionale
+            gameState.moves = prev.moves + 1;
+            gameState.lastFlippedCardId = null;
+
+            checkAutoCompleteAvailability();
+            updateStatsUI();
+            renderBoard();
+        }
+
+        // ==========================================
+        // 10. RENDERING DELLE CARTE CON BORDO
+        // ==========================================
+        function createCardElement(card, locationInfo) {
+            const el = document.createElement('div');
+            el.className = `card ${card.faceUp ? 'face-up' : 'face-down'}`;
+            el.dataset.cardId = card.id;
+
+        // Mappatura esatta richiesta per i nomi file nella cartella images/:
+        // images/HEART-1.svg ... images/HEART-10.svg, images/HEART-JACK.svg, images/HEART-QUEEN.svg, images/HEART-KING.svg
+        function getCardFileName(suit, value) {
+            let rankName = String(value);
+            if (value === 11) rankName = 'JACK';
+            else if (value === 12) rankName = 'QUEEN';
+            else if (value === 13) rankName = 'KING';
+            return `images/${suit}-${rankName}.svg`;
+        }
+
+        function getRankDisplay(value) {
+// ... existing code ... -->
+            if (card.faceUp) {
+                const fileName = getCardFileName(card.suit, card.value);
+                img.src = fileName;
+                img.onerror = function () {
+                    this.onerror = null;
+                    this.src = getFallbackCardFaceSVG(card.suit, card.value);
+                };
+            } else {
+                img.src = 'images/Retro_Blu.png';
+                img.onerror = function () {
+                    this.onerror = null;
+                    this.src = getFallbackCardBackSVG();
+                };
+            }
+
+            inner.appendChild(img);
+            el.appendChild(inner);
+
+            // Associa eventi interazione (Drag & Drop + Doppio Tap/Click) se scoperta e interattiva
+            if (card.faceUp && locationInfo.interactive) {
+                attachCardInteraction(el, card, locationInfo);
+            }
+
+            return el;
+        }
+
+        function renderBoard() {
+            // 1. Rendering Mazzo (Stock)
+            elStock.innerHTML = '';
+            if (gameState.stock.length > 0) {
+                const topStockCard = gameState.stock[gameState.stock.length - 1];
+                const cardEl = createCardElement(topStockCard, { interactive: false });
+                cardEl.style.cursor = 'pointer';
+                elStock.appendChild(cardEl);
+
+                const badge = document.createElement('div');
+                badge.className = 'stock-badge';
+                badge.textContent = gameState.stock.length;
+                elStock.appendChild(badge);
+            } else {
+                const canRedeal = gameState.waste.length > 0 &&
+                    (settings.maxRedeals === -1 || gameState.redealsUsed < settings.maxRedeals);
+
+                const indicator = document.createElement('div');
+                indicator.className = `stock-indicator ${canRedeal ? 'stock-recycle' : 'stock-empty-x'}`;
+                indicator.innerHTML = canRedeal
+                    ? `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>`
+                    : '&times;';
+                elStock.appendChild(indicator);
+
+                if (settings.maxRedeals !== -1) {
+                    const rem = Math.max(0, settings.maxRedeals - gameState.redealsUsed);
+                    const badge = document.createElement('div');
+                    badge.className = 'stock-badge';
+                    badge.textContent = `${rem} rim.`;
+                    elStock.appendChild(badge);
+                }
+            }
+
+            // 2. Rendering Scarti (Waste) - Mostra fino a 3 carte a ventaglio se drawCount === 3
+            elWaste.innerHTML = '';
+            if (gameState.waste.length > 0) {
+                const visibleCount = settings.drawCount === 3 ? Math.min(3, gameState.waste.length) : 1;
+                const startIndex = gameState.waste.length - visibleCount;
+                const fanOffset = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--waste-fan-offset')) || 24;
+
+                for (let i = 0; i < visibleCount; i++) {
+                    const idx = startIndex + i;
+                    const card = gameState.waste[idx];
+                    const isTopCard = (idx === gameState.waste.length - 1);
+                    const cardEl = createCardElement(card, {
+                        source: 'waste',
+                        index: idx,
+                        interactive: isTopCard
+                    });
+                    cardEl.style.left = `${i * fanOffset}px`;
+                    cardEl.style.zIndex = i + 1;
+                    if (!isTopCard) {
+                        cardEl.style.cursor = 'default';
+                    }
+                    elWaste.appendChild(cardEl);
+                }
+            }
+
+            // 3. Rendering 4 Case / Fondazioni
+            elFoundations.forEach((slotEl, fIdx) => {
+                // Rimuove eventuali carte precedenti lasciando la watermark
+                Array.from(slotEl.querySelectorAll('.card')).forEach(n => n.remove());
+                const pile = gameState.foundations[fIdx];
+                if (pile.length > 0) {
+                    const topCard = pile[pile.length - 1];
+                    const cardEl = createCardElement(topCard, {
+                        source: 'foundation',
+                        foundationIndex: fIdx,
+                        index: pile.length - 1,
+                        interactive: true
+                    });
+                    cardEl.style.zIndex = 2;
+                    slotEl.appendChild(cardEl);
+                }
+            });
+
+            // 4. Rendering 7 Colonne del Tableau
+            const offsetDown = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tableau-offset-down')) || 18;
+            const offsetUp = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--tableau-offset-up')) || 28;
+
+            elTableauCols.forEach((colEl, colIdx) => {
+                Array.from(colEl.querySelectorAll('.card')).forEach(n => n.remove());
+                const colCards = gameState.tableau[colIdx];
+
+                // Calcolo dinamico della compressione verticale se la colonna è molto lunga su tablet
+                const boardHeight = document.getElementById('tableau-row').clientHeight || 500;
+                const cardH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-height')) || 136;
+                let naturalTop = 0;
+                for (let i = 0; i < colCards.length - 1; i++) {
+                    naturalTop += colCards[i].faceUp ? offsetUp : offsetDown;
+                }
+                const maxAllowedTop = Math.max(120, boardHeight - cardH - 12);
+                const scaleFactor = naturalTop > maxAllowedTop ? (maxAllowedTop / naturalTop) : 1;
+
+                let currentTop = 0;
+                colCards.forEach((card, cardIdx) => {
+                    const cardEl = createCardElement(card, {
+                        source: 'tableau',
+                        colIndex: colIdx,
+                        cardIndex: cardIdx,
+                        interactive: card.faceUp
+                    });
+                    cardEl.style.top = `${Math.round(currentTop)}px`;
+                    cardEl.style.zIndex = cardIdx + 1;
+                    colEl.appendChild(cardEl);
+
+                    currentTop += (card.faceUp ? offsetUp : offsetDown) * scaleFactor;
+                });
+            });
+
+            gameState.lastFlippedCardId = null;
+        }
+
+        // ==========================================
+        // 11. LOGICA DI PESCA DAL MAZZO (STOCK)
+        // ==========================================
+        elStock.addEventListener('click', handleStockClick);
+
+        function handleStockClick() {
+            if (gameState.isWon) return;
+            ensureTimerStarted();
+
+            if (gameState.stock.length > 0) {
+                pushHistorySnapshot();
+                const countToDraw = Math.min(settings.drawCount, gameState.stock.length);
+                for (let i = 0; i < countToDraw; i++) {
+                    const card = gameState.stock.pop();
+                    card.faceUp = true;
+                    gameState.waste.push(card);
+                    if (i === countToDraw - 1) {
+                        gameState.lastFlippedCardId = card.id;
+                    }
+                }
+                gameState.moves++;
+                updateStatsUI();
+                renderBoard();
+            } else if (gameState.waste.length > 0) {
+                // Ricomposizione del mazzo dagli scarti
+                const canRedeal = settings.maxRedeals === -1 || gameState.redealsUsed < settings.maxRedeals;
+                if (!canRedeal) {
+                    showToast('Nessun ripescaggio disponibile!');
+                    return;
+                }
+
+                pushHistorySnapshot();
+                while (gameState.waste.length > 0) {
+                    const card = gameState.waste.pop();
+                    card.faceUp = false;
+                    gameState.stock.push(card);
+                }
+                gameState.redealsUsed++;
+                gameState.moves++;
+
+                // Penalità classica Windows al riciclo del mazzo in modalità 1 carta (-100) o dopo 3 passaggi in modalità 3 carte (-20)
+                if (settings.drawCount === 1) {
+                    addScore(-100);
+                } else if (gameState.redealsUsed > 3) {
+                    addScore(-20);
+                }
+
+                updateStatsUI();
+                renderBoard();
+            }
+        }
+
+        // ==========================================
+        // 12. REGOLE DI VALIDAZIONE MOSSE KLONDIKE
+        // ==========================================
+        function canMoveToFoundation(card, foundationIndex) {
+            const targetSuit = SUITS[foundationIndex];
+            if (card.suit !== targetSuit) return false;
+
+            const pile = gameState.foundations[foundationIndex];
+            if (pile.length === 0) {
+                return card.value === 1; // Solo Asso su casa vuota
+            }
+            const topCard = pile[pile.length - 1];
+            return card.value === topCard.value + 1;
+        }
+
+        function canMoveToTableau(leadCard, targetColIndex) {
+            const pile = gameState.tableau[targetColIndex];
+            if (pile.length === 0) {
+                return leadCard.value === 13; // Solo Re su colonna vuota
+            }
+            const topCard = pile[pile.length - 1];
+            if (!topCard.faceUp) return false;
+            return (leadCard.color !== topCard.color) && (leadCard.value === topCard.value - 1);
+        }
+
+        // ==========================================
+        // 13. INTERAZIONE TOUCH & MOUSE (DRAG + DOPPIO TAP)
+        // ==========================================
+        let dragContext = null;
+        let lastTapInfo = { cardId: null, time: 0 };
+
+        function attachCardInteraction(cardEl, card, locationInfo) {
+            cardEl.addEventListener('pointerdown', (e) => {
+                if (e.button !== undefined && e.button !== 0) return;
+                if (gameState.isWon) return;
+                e.stopPropagation();
+
+                const now = Date.now();
+                const isDoubleTap = (lastTapInfo.cardId === card.id) && (now - lastTapInfo.time < 340);
+                lastTapInfo = { cardId: card.id, time: now };
+
+                if (isDoubleTap) {
+                    lastTapInfo = { cardId: null, time: 0 };
+                    tryAutoMoveCardToFoundation(locationInfo);
+                    return;
+                }
+
+                startDragging(e, card, locationInfo);
+            });
+        }
+
+        function startDragging(e, card, locationInfo) {
+            // Estrae le carte coinvolte nel trascinamento
+            let movingCards = [];
+            let sourceElements = [];
+
+            if (locationInfo.source === 'waste') {
+                movingCards = [gameState.waste[gameState.waste.length - 1]];
+                const domCard = elWaste.querySelector(`[data-card-id="${card.id}"]`);
+                if (domCard) sourceElements = [domCard];
+            } else if (locationInfo.source === 'foundation') {
+                const pile = gameState.foundations[locationInfo.foundationIndex];
+                movingCards = [pile[pile.length - 1]];
+                const domCard = elFoundations[locationInfo.foundationIndex].querySelector(`[data-card-id="${card.id}"]`);
+                if (domCard) sourceElements = [domCard];
+            } else if (locationInfo.source === 'tableau') {
+                const col = gameState.tableau[locationInfo.colIndex];
+                movingCards = col.slice(locationInfo.cardIndex);
+                const colEl = elTableauCols[locationInfo.colIndex];
+                movingCards.forEach(mc => {
+                    const el = colEl.querySelector(`[data-card-id="${mc.id}"]`);
+                    if (el) sourceElements.push(el);
+                });
+            }
+
+            if (movingCards.length === 0 || sourceElements.length === 0) return;
+
+            const firstRect = sourceElements[0].getBoundingClientRect();
+            const offsetX = e.clientX - firstRect.left;
+            const offsetY = e.clientY - firstRect.top;
+
+            // Crea contenitore visivo nel drag-layer
+            const stackWrapper = document.createElement('div');
+            stackWrapper.className = 'drag-stack';
+            stackWrapper.style.left = `${firstRect.left}px`;
+            stackWrapper.style.top = `${firstRect.top}px`;
+
+            sourceElements.forEach((origEl) => {
+                const rect = origEl.getBoundingClientRect();
+                const clone = origEl.cloneNode(true);
+                clone.style.position = 'absolute';
+                clone.style.left = `${rect.left - firstRect.left}px`;
+                clone.style.top = `${rect.top - firstRect.top}px`;
+                stackWrapper.appendChild(clone);
+                origEl.style.visibility = 'hidden';
+            });
+
+            elDragLayer.appendChild(stackWrapper);
+
+            dragContext = {
+                pointerId: e.pointerId,
+                movingCards,
+                locationInfo,
+                sourceElements,
+                stackWrapper,
+                offsetX,
+                offsetY,
+                hasMoved: false,
+                startX: e.clientX,
+                startY: e.clientY
+            };
+
+            try {
+                e.target.setPointerCapture(e.pointerId);
+            } catch (_) {}
+        }
+
+        window.addEventListener('pointermove', (e) => {
+            if (!dragContext || e.pointerId !== dragContext.pointerId) return;
+
+            const dx = e.clientX - dragContext.startX;
+            const dy = e.clientY - dragContext.startY;
+            if (Math.hypot(dx, dy) > 4) {
+                dragContext.hasMoved = true;
+            }
+
+            const newX = e.clientX - dragContext.offsetX;
+            const newY = e.clientY - dragContext.offsetY;
+            dragContext.stackWrapper.style.left = `${newX}px`;
+            dragContext.stackWrapper.style.top = `${newY}px`;
+
+            highlightPotentialDropTarget(e.clientX, e.clientY);
+        });
+
+        window.addEventListener('pointerup', finishDragging);
+        window.addEventListener('pointercancel', finishDragging);
+
+        function clearDropHighlights() {
+            elFoundations.forEach(el => el.classList.remove('highlight-target'));
+            elTableauCols.forEach(el => el.classList.remove('highlight-target'));
+        }
+
+        function findDropTargetAtPoint(clientX, clientY) {
+            const leadCard = dragContext.movingCards[0];
+            const isSingleCard = dragContext.movingCards.length === 1;
+
+            // 1. Controlla le 4 Case (solo se carta singola)
+            if (isSingleCard) {
+                for (let fIdx = 0; fIdx < 4; fIdx++) {
+                    const rect = elFoundations[fIdx].getBoundingClientRect();
+                    if (clientX >= rect.left - 10 && clientX <= rect.right + 10 &&
+                        clientY >= rect.top - 10 && clientY <= rect.bottom + 10) {
+                        if (canMoveToFoundation(leadCard, fIdx)) {
+                            return { type: 'foundation', index: fIdx };
+                        }
+                    }
+                }
+            }
+
+            // 2. Controlla le 7 Colonne del Tableau
+            for (let cIdx = 0; cIdx < 7; cIdx++) {
+                if (dragContext.locationInfo.source === 'tableau' && dragContext.locationInfo.colIndex === cIdx) {
+                    continue;
+                }
+                const colEl = elTableauCols[cIdx];
+                const rect = colEl.getBoundingClientRect();
+                if (clientX >= rect.left - 8 && clientX <= rect.right + 8 &&
+                    clientY >= rect.top - 10 && clientY <= rect.bottom + 30) {
+                    if (canMoveToTableau(leadCard, cIdx)) {
+                        return { type: 'tableau', index: cIdx };
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        function highlightPotentialDropTarget(clientX, clientY) {
+            clearDropHighlights();
+            const target = findDropTargetAtPoint(clientX, clientY);
+            if (!target) return;
+            if (target.type === 'foundation') {
+                elFoundations[target.index].classList.add('highlight-target');
+            } else if (target.type === 'tableau') {
+                elTableauCols[target.index].classList.add('highlight-target');
+            }
+        }
+
+        function finishDragging(e) {
+            if (!dragContext || e.pointerId !== dragContext.pointerId) return;
+
+            clearDropHighlights();
+            const target = dragContext.hasMoved ? findDropTargetAtPoint(e.clientX, e.clientY) : null;
+
+            // Pulisce il drag layer
+            dragContext.stackWrapper.remove();
+
+            if (target) {
+                executeMove(dragContext.locationInfo, target);
+            } else {
+                // Ripristina visibilità carte originali
+                dragContext.sourceElements.forEach(el => {
+                    el.style.visibility = 'visible';
+                });
+            }
+
+            dragContext = null;
+        }
+
+        // ==========================================
+        // 14. ESECUZIONE MOSSE E DOPPIO TAP AUTO-CASA
+        // ==========================================
+        function tryAutoMoveCardToFoundation(locationInfo) {
+            let card = null;
+            if (locationInfo.source === 'waste' && gameState.waste.length > 0) {
+                card = gameState.waste[gameState.waste.length - 1];
+            } else if (locationInfo.source === 'tableau') {
+                const col = gameState.tableau[locationInfo.colIndex];
+                if (locationInfo.cardIndex === col.length - 1) {
+                    card = col[col.length - 1];
+                }
+            }
+
+            if (!card) return false;
+
+            const fIdx = SUIT_META[card.suit].foundationIndex;
+            if (canMoveToFoundation(card, fIdx)) {
+                executeMove(locationInfo, { type: 'foundation', index: fIdx });
+                return true;
+            }
+            return false;
+        }
+
+        function executeMove(from, to) {
+            ensureTimerStarted();
+            pushHistorySnapshot();
+
+            let movedCards = [];
+            let scoreDelta = 0;
+
+            // Rimuove le carte dall'origine
+            if (from.source === 'waste') {
+                movedCards = [gameState.waste.pop()];
+            } else if (from.source === 'foundation') {
+                movedCards = [gameState.foundations[from.foundationIndex].pop()];
+            } else if (from.source === 'tableau') {
+                const col = gameState.tableau[from.colIndex];
+                movedCards = col.splice(from.cardIndex);
+
+                // Se la nuova carta in cima alla colonna era coperta, la scopre (+5 punti Windows)
+                if (col.length > 0 && !col[col.length - 1].faceUp) {
+                    col[col.length - 1].faceUp = true;
+                    gameState.lastFlippedCardId = col[col.length - 1].id;
+                    scoreDelta += 5;
+                }
+            }
+
+            // Inserisce le carte nella destinazione e calcola punteggio Windows
+            if (to.type === 'foundation') {
+                gameState.foundations[to.index].push(movedCards[0]);
+                if (from.source !== 'foundation') {
+                    scoreDelta += 10; // +10 verso fondazione
+                }
+            } else if (to.type === 'tableau') {
+                gameState.tableau[to.index].push(...movedCards);
+                if (from.source === 'waste') {
+                    scoreDelta += 5;  // +5 da scarti a tableau
+                } else if (from.source === 'foundation') {
+                    scoreDelta -= 15; // -15 da fondazione a tableau
+                }
+            }
+
+            gameState.moves++;
+            addScore(scoreDelta);
+            updateStatsUI();
+            renderBoard();
+
+            checkAutoCompleteAvailability();
+            checkVictoryCondition();
+        }
+
+        // ==========================================
+        // 15. AUTO-COMPLETAMENTO E VITTORIA
+        // ==========================================
+        function checkAutoCompleteAvailability() {
+            if (gameState.isWon) {
+                btnAutoComplete.style.display = 'none';
+                return;
+            }
+            // Disponibile quando mazzo e scarti sono vuoti e tutte le carte sul tableau sono scoperte
+            const stockEmpty = gameState.stock.length === 0 && gameState.waste.length === 0;
+            const allFaceUp = gameState.tableau.every(col => col.every(card => card.faceUp));
+
+            btnAutoComplete.style.display = (stockEmpty && allFaceUp) ? 'inline-flex' : 'none';
+        }
+
+        btnAutoComplete.addEventListener('click', runAutoCompleteSequence);
+
+        function runAutoCompleteSequence() {
+            btnAutoComplete.style.display = 'none';
+            const step = () => {
+                if (gameState.isWon) return;
+                let movedAny = false;
+
+                for (let cIdx = 0; cIdx < 7; cIdx++) {
+                    const col = gameState.tableau[cIdx];
+                    if (col.length === 0) continue;
+                    const topCard = col[col.length - 1];
+                    const fIdx = SUIT_META[topCard.suit].foundationIndex;
+                    if (canMoveToFoundation(topCard, fIdx)) {
+                        executeMove(
+                            { source: 'tableau', colIndex: cIdx, cardIndex: col.length - 1 },
+                            { type: 'foundation', index: fIdx }
+                        );
+                        movedAny = true;
+                        break;
+                    }
+                }
+
+                if (movedAny && !gameState.isWon) {
+                    setTimeout(step, 65);
+                }
+            };
+            step();
+        }
+
+        function checkVictoryCondition() {
+            const totalInFoundations = gameState.foundations.reduce((acc, pile) => acc + pile.length, 0);
+            if (totalInFoundations === 52 && !gameState.isWon) {
+                gameState.isWon = true;
+                stopTimer();
+                btnAutoComplete.style.display = 'none';
+                btnUndo.disabled = true;
+
+                // Bonus tempo Windows se partita veloce (> 30s)
+                if (gameState.seconds > 30) {
+                    const timeBonus = Math.max(0, Math.round(700000 / gameState.seconds));
+                    addScore(timeBonus);
+                }
+
+                startWindowsCascadeAnimation();
+
+                setTimeout(() => {
+                    document.getElementById('win-score').textContent = gameState.score;
+                    document.getElementById('win-moves').textContent = gameState.moves;
+                    document.getElementById('win-time').textContent = formatTime(gameState.seconds);
+                    document.getElementById('victory-modal').classList.add('open');
+                }, 1600);
+            }
+        }
+
+        // Animazione classica delle carte che rimbalzano stile Windows Solitaire
+        function startWindowsCascadeAnimation() {
+            const canvas = elVictoryCanvas;
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            canvas.style.display = 'block';
+            const ctx = canvas.getContext('2d');
+
+            const cardW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-width')) || 96;
+            const cardH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--card-height')) || 136;
+
+            // Prepara le immagini delle 52 carte
+            const queue = [];
+            for (let val = 13; val >= 1; val--) {
+                for (let fIdx = 0; fIdx < 4; fIdx++) {
+                    const suit = SUITS[fIdx];
+                    const slotRect = elFoundations[fIdx].getBoundingClientRect();
+                    const img = new Image();
+                    img.src = getCardFileName(suit, val);
+                    img.onerror = function () {
+                        this.onerror = null;
+                        this.src = getFallbackCardFaceSVG(suit, val);
+                    };
+                    queue.push({
+                        img,
+                        x: slotRect.left,
+                        y: slotRect.top,
+                        vx: (Math.random() * 7 + 2.5) * (Math.random() < 0.5 ? -1 : 1),
+                        vy: -(Math.random() * 5 + 1)
+                    });
+                }
+            }
+
+            let activeCard = queue.shift();
+            const gravity = 0.55;
+            const bounce = 0.82;
+
+            function animate() {
+                if (!activeCard) return;
+
+                // Disegna carta con bordo bianco nitido
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = '#8a949e';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.roundRect(activeCard.x, activeCard.y, cardW, cardH, 6);
+                ctx.fill();
+                ctx.stroke();
+
+                if (activeCard.img.complete && activeCard.img.naturalWidth > 0) {
+                    ctx.drawImage(activeCard.img, activeCard.x + 2, activeCard.y + 2, cardW - 4, cardH - 4);
+                }
+
+                activeCard.x += activeCard.vx;
+                activeCard.y += activeCard.vy;
+                activeCard.vy += gravity;
+
+                if (activeCard.y + cardH > canvas.height) {
+                    activeCard.y = canvas.height - cardH;
+                    activeCard.vy = -activeCard.vy * bounce;
+                }
+
+                if (activeCard.x + cardW < 0 || activeCard.x > canvas.width) {
+                    activeCard = queue.shift();
+                }
+
+                victoryAnimId = requestAnimationFrame(animate);
+            }
+
+            victoryAnimId = requestAnimationFrame(animate);
+        }
+
+        function stopVictoryAnimation() {
+            if (victoryAnimId) {
+                cancelAnimationFrame(victoryAnimId);
+                victoryAnimId = null;
+            }
+            elVictoryCanvas.style.display = 'none';
+            const ctx = elVictoryCanvas.getContext('2d');
+            ctx.clearRect(0, 0, elVictoryCanvas.width, elVictoryCanvas.height);
+        }
+
+        // ==========================================
+        // 16. GESTIONE MODALE IMPOSTAZIONI
+        // ==========================================
+        const modalSettings = document.getElementById('settings-modal');
+        const customColorInput = document.getElementById('custom-bg-color');
+        let tempSettings = { ...settings };
+
+        function openSettingsModal() {
+            tempSettings = { ...settings };
+            syncSettingsModalUI();
+            modalSettings.classList.add('open');
+        }
+
+        function closeSettingsModal() {
+            modalSettings.classList.remove('open');
+        }
+
+        function syncSettingsModalUI() {
+            // Colori
+            document.querySelectorAll('#color-swatches .swatch-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.color.toLowerCase() === tempSettings.bgColor.toLowerCase());
+            });
+            customColorInput.value = tempSettings.bgColor;
+
+            // Numero carte scoperte (1 o 3)
+            document.querySelectorAll('#draw-count-options .pill-btn').forEach(btn => {
+                btn.classList.toggle('active', Number(btn.dataset.draw) === tempSettings.drawCount);
+            });
+
+            // Ripescaggi mazzo
+            document.querySelectorAll('#redeals-options .pill-btn').forEach(btn => {
+                btn.classList.toggle('active', Number(btn.dataset.redeals) === tempSettings.maxRedeals);
+            });
+        }
+
+        document.querySelectorAll('#color-swatches .swatch-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                tempSettings.bgColor = btn.dataset.color;
+                syncSettingsModalUI();
+            });
+        });
+
+        customColorInput.addEventListener('input', (e) => {
+            tempSettings.bgColor = e.target.value;
+            syncSettingsModalUI();
+        });
+
+        document.querySelectorAll('#draw-count-options .pill-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                tempSettings.drawCount = Number(btn.dataset.draw);
+                syncSettingsModalUI();
+            });
+        });
+
+        document.querySelectorAll('#redeals-options .pill-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                tempSettings.maxRedeals = Number(btn.dataset.redeals);
+                syncSettingsModalUI();
+            });
+        });
+
+        document.getElementById('btn-settings').addEventListener('click', openSettingsModal);
+        document.getElementById('btn-close-settings').addEventListener('click', closeSettingsModal);
+        document.getElementById('btn-cancel-settings').addEventListener('click', closeSettingsModal);
+
+        document.getElementById('btn-save-settings').addEventListener('click', () => {
+            const rulesChanged = (tempSettings.drawCount !== settings.drawCount) ||
+                                 (tempSettings.maxRedeals !== settings.maxRedeals);
+
+            settings = { ...tempSettings };
+            saveSettingsToStorage();
+            applyBackgroundTheme(settings.bgColor);
+            closeSettingsModal();
+
+            if (rulesChanged) {
+                startNewGame();
+                showToast('Nuove regole applicate: partita riavviata');
+            } else {
+                renderBoard();
+                showToast('Impostazioni salvate');
+            }
+        });
+
+        // ==========================================
+        // 17. PULSANTI BARRA E TOAST
+        // ==========================================
+        document.getElementById('btn-new-game').addEventListener('click', () => {
+            startNewGame();
+            showToast('Nuova partita avviata');
+        });
+
+        document.getElementById('btn-undo').addEventListener('click', undoLastMove);
+
+        document.getElementById('btn-win-new-game').addEventListener('click', () => {
+            document.getElementById('victory-modal').classList.remove('open');
+            startNewGame();
+        });
+
+        let toastTimeout = null;
+        function showToast(message) {
+            const toast = document.getElementById('toast-msg');
+            toast.textContent = message;
+            toast.classList.add('show');
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2200);
+        }
+
+        // ==========================================
+        // 18. AVVIO APPLICAZIONE
+        // ==========================================
+        applyBackgroundTheme(settings.bgColor);
+        updateResponsiveMetrics();
+        startNewGame();
+    })();
+    </script>
+</body>
+</html>
