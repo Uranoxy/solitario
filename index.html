@@ -1240,18 +1240,18 @@
             el.className = `card ${card.faceUp ? 'face-up' : 'face-down'}`;
             el.dataset.cardId = card.id;
 
-        // Mappatura esatta richiesta per i nomi file nella cartella images/:
-        // images/HEART-1.svg ... images/HEART-10.svg, images/HEART-JACK.svg, images/HEART-QUEEN.svg, images/HEART-KING.svg
-        function getCardFileName(suit, value) {
-            let rankName = String(value);
-            if (value === 11) rankName = 'JACK';
-            else if (value === 12) rankName = 'QUEEN';
-            else if (value === 13) rankName = 'KING';
-            return `images/${suit}-${rankName}.svg`;
-        }
+            if (gameState.lastFlippedCardId === card.id) {
+                el.classList.add('flip-anim');
+            }
 
-        function getRankDisplay(value) {
-// ... existing code ... -->
+            const inner = document.createElement('div');
+            inner.className = 'card-inner';
+
+            const img = document.createElement('img');
+            img.className = 'card-graphic';
+            img.alt = card.faceUp ? `${getRankDisplay(card.value)} ${card.suit}` : 'Dorso carta';
+            img.draggable = false;
+
             if (card.faceUp) {
                 const fileName = getCardFileName(card.suit, card.value);
                 img.src = fileName;
