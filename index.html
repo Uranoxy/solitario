@@ -842,6 +842,7 @@
                     <div class="setting-label">Ricomposizione del mazzo (Ripescaggi)</div>
                     <div class="setting-desc">Quante volte è possibile ricomporre il mazzo dopo aver scoperto tutte le carte.</div>
                     <div class="option-pills" id="redeals-options" style="grid-template-columns: repeat(5, 1fr);">
+                        <button type="button" class="pill-btn" data-redeals="-1" style="grid-column: span 5;">Illimitati</button>
                         <button type="button" class="pill-btn" data-redeals="1">1</button>
                         <button type="button" class="pill-btn" data-redeals="2">2</button>
                         <button type="button" class="pill-btn" data-redeals="3">3</button>
@@ -981,7 +982,7 @@
         const DEFAULT_SETTINGS = {
             bgColor: '#1b6e32',
             drawCount: 3,       // Default: Gira 3 carte
-            maxRedeals: 5       // Default: Ripescaggi 5 volte
+            maxRedeals: -1      // Default: Ripescaggi Illimitati
         };
 
         let settings = loadSettings();
@@ -1033,10 +1034,11 @@
                 if (raw) {
                     const parsed = JSON.parse(raw);
                     const parsedRedeals = Number(parsed.maxRedeals);
+                    const isValidRedeals = parsedRedeals === -1 || (Number.isInteger(parsedRedeals) && parsedRedeals >= 1 && parsedRedeals <= 10);
                     return {
                         bgColor: parsed.bgColor || DEFAULT_SETTINGS.bgColor,
                         drawCount: [1, 3].includes(Number(parsed.drawCount)) ? Number(parsed.drawCount) : DEFAULT_SETTINGS.drawCount,
-                        maxRedeals: (Number.isInteger(parsedRedeals) && parsedRedeals >= 1 && parsedRedeals <= 10) ? parsedRedeals : DEFAULT_SETTINGS.maxRedeals
+                        maxRedeals: isValidRedeals ? parsedRedeals : DEFAULT_SETTINGS.maxRedeals
                     };
                 }
             } catch (e) {
